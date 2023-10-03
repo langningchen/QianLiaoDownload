@@ -1,13 +1,12 @@
 #include "Curl.hpp"
 #include <regex>
 #include <sys/stat.h>
-extern string CurrentDir;
 void Login()
 {
     int HTTPResponseCode = 0;
     GetDataToFile("https://m.qlchat.com/wechat/page/mine/collect",
-                  "Header.tmp",
-                  "Body.tmp",
+                  "",
+                  "",
                   false,
                   "",
                   NULL,
@@ -16,23 +15,23 @@ void Login()
     {
         GetDataToFile("https://open.weixin.qq.com/connect/qrconnect?appid=wx485213694a978438&scope=snsapi_login&redirect_uri=https://m.qlchat.com/qrLogin.htm");
         string LoginQRCodeID = GetStringBetween(GetDataFromFileToString(), "<div class=\"wrp_code\"><img class=\"qrcode lightBorder\" src=\"/connect/qrcode/", "\"/></div>");
-        GetDataToFile("https://open.weixin.qq.com/connect/qrcode/" + LoginQRCodeID, "Header.tmp", "QRCode.jpeg");
-        system(string("code \"" + CurrentDir + "QRCode.jpeg\"").c_str());
+        GetDataToFile("https://open.weixin.qq.com/connect/qrcode/" + LoginQRCodeID, "", "QRCode.jpeg");
+        system(string("code-insiders \"QRCode.jpeg\"").c_str());
         bool Scanned = false;
         while (true)
         {
             curl_slist *HeaderList = NULL;
             HeaderList = curl_slist_append(HeaderList, "Referer: https://open.weixin.qq.com/");
             GetDataToFile("https://lp.open.weixin.qq.com/connect/l/qrconnect?uuid=" + LoginQRCodeID + (Scanned ? "&last=404" : "") + "&_=" + to_string(time(NULL)),
-                          "Header.tmp",
-                          "Body.tmp",
+                          "",
+                          "",
                           false,
                           "",
                           HeaderList);
             string LoginQRCodeStatus = GetStringBetween(GetDataFromFileToString(), "window.wx_errcode=", ";");
             if (LoginQRCodeStatus == "404")
             {
-                remove((CurrentDir + "QRCode.jpeg").c_str());
+                remove("QRCode.jpeg");
                 cout << "已扫描，请在手机上确认" << endl;
                 Scanned = true;
             }
@@ -64,19 +63,19 @@ void DownloadTopic(string LiveID,
                    int TopicCounter, int TopicSize, string TopicID, string TopicName)
 {
     string DownloadDir = "0" + to_string(ChannelCounter) + ChannelName + "_" + (TopicCounter < 10 ? "0" : "") + to_string(TopicCounter) + TopicName + "/";
-    if (access((CurrentDir + DownloadDir).c_str(), 0) != -1)
+    if (access((DownloadDir).c_str(), 0) != -1)
     {
         cout << "已存在" << DownloadDir << "，跳过" << endl;
         return;
     }
-    mkdir((CurrentDir + DownloadDir).c_str(), 0755);
+    mkdir(DownloadDir.c_str(), 0755);
     curl_slist *HeaderList = curl_slist_append(NULL, string("referer: https://m.qlchat.com/topic/details?topicId=" + TopicID).c_str());
     json PostData;
     PostData["topicId"] = TopicID;
     PostData["type"] = "audio";
     GetDataToFile("https://m.qlchat.com/api/wechat/topic/total-speak-list",
-                  "Header.tmp",
-                  "Body.tmp",
+                  "",
+                  "",
                   true,
                   PostData.dump(),
                   HeaderList);
@@ -106,7 +105,7 @@ void DownloadTopic(string LiveID,
         try
         {
             GetDataToFile(URL,
-                          "Header.tmp",
+                          "",
                           DownloadDir + to_string(Counter) + Extension,
                           false,
                           "",
@@ -123,19 +122,16 @@ void DownloadTopic(string LiveID,
             Counter--;
             continue;
         }
-        if (system(("ffmpeg -y -hide_banner -loglevel error -i \"" +
-                    CurrentDir + DownloadDir + to_string(Counter) + Extension + "\" -acodec copy \"" +
-                    CurrentDir + DownloadDir + to_string(Counter) + ".mp3\"")
-                       .c_str()) == 0)
-            remove((CurrentDir + DownloadDir + to_string(Counter) + Extension).c_str());
-        Command += CurrentDir + DownloadDir + to_string(Counter) + ".mp3|";
+        if (system(("ffmpeg -y -hide_banner -loglevel error -i \"" + DownloadDir + to_string(Counter) + Extension + "\" \"" + DownloadDir + to_string(Counter) + ".mp3\"").c_str()) == 0)
+            remove((DownloadDir + to_string(Counter) + Extension).c_str());
+        Command += DownloadDir + to_string(Counter) + ".mp3|";
     }
     Command.erase(Command.size() - 1, 1);
-    Command += "\" \"" + CurrentDir + DownloadDir + "00.mp3\"";
+    Command += "\" \"" + DownloadDir + "00.mp3\"";
     cout << Command << endl;
     if (system(Command.c_str()) == 0)
         for (size_t i = 1; i <= Data["data"]["speakList"].size(); i++)
-            remove((CurrentDir + DownloadDir + to_string(i) + ".mp3").c_str());
+            remove((DownloadDir + to_string(i) + ".mp3").c_str());
     string LastTime = "0";
     vector<string> ImageURLList;
     bool Break = false;
@@ -149,8 +145,8 @@ void DownloadTopic(string LiveID,
         PostData["hideLuckyMoney"] = false;
         PostData["pullComment"] = "N";
         GetDataToFile("https://m.qlchat.com/api/wechat/topic/getTopicSpeak",
-                      "Header.tmp",
-                      "Body.tmp",
+                      "",
+                      "",
                       true,
                       PostData.dump(),
                       HeaderList);
@@ -177,7 +173,7 @@ void DownloadTopic(string LiveID,
         try
         {
             GetDataToFile(i,
-                          "Header.tmp",
+                          "",
                           DownloadDir + (Counter < 10 ? "0" : "") + to_string(Counter) + ".jpg",
                           false,
                           "",
@@ -209,8 +205,8 @@ void DownloadChannel(string LiveID,
     curl_slist *HeaderList = NULL;
     HeaderList = curl_slist_append(HeaderList, string("referer: https://m.qlchat.com/wechat/page/channel-intro?channelId=" + ChannelID).c_str());
     GetDataToFile("https://m.qlchat.com/api/wechat/transfer/h5/interact/getCourseList",
-                  "Header.tmp",
-                  "Body.tmp",
+                  "",
+                  "",
                   true,
                   PostData.dump());
     json Data = json::parse(GetDataFromFileToString());
@@ -225,6 +221,7 @@ void DownloadChannel(string LiveID,
 }
 int main()
 {
+    CLN_TRY
     Login();
     DownloadTopic("210000327499248", 0, 1, "", 0, 1, "2000018835700457", "正月十四 文化学者李林 文化母体与黄金规则");
     return 0;
@@ -237,8 +234,8 @@ int main()
     PostData["isCamp"] = "N";
     PostData["tagId"] = 0;
     GetDataToFile("https://m.qlchat.com/api/wechat/transfer/h5/channel/getChannels",
-                  "Header.tmp",
-                  "Body.tmp",
+                  "",
+                  "",
                   true,
                   PostData.dump());
     json Data = json::parse(GetDataFromFileToString());
@@ -249,5 +246,6 @@ int main()
         DownloadChannel(LiveID,
                         Counter, Data["data"]["liveChannels"].size(), i["name"].as_string(), i["id"].as_string());
     }
+    CLN_CATCH
     return 0;
 }
